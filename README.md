@@ -2,14 +2,31 @@
 
 感染症週報ナビ（Flutter アプリ）向けの **中継API** です。
 国立健康危機管理研究機構（JIHS）が公開する「感染症発生動向調査 週報（速報値）」を
-取得・整形して JSON で配信します。GitHub Pages で恒久的に公開され、
+取得・整形して JSON で配信します。公開 GitHub リポジトリ経由で恒久的に配信され、
 GitHub Actions により **毎週自動更新** されます。
 
 ## エンドポイント
 
+アプリは以下の順で取得します（自動フォールバック）。
+
+### 1. jsDelivr CDN（推奨・高速・CORS対応）
+```
+GET https://cdn.jsdelivr.net/gh/jx3t0shak1052-creator/infectionnews@main/api/surveillance.json
+```
+
+### 2. raw.githubusercontent（バックアップ）
+```
+GET https://raw.githubusercontent.com/jx3t0shak1052-creator/infectionnews/main/api/surveillance.json
+```
+
+### 3. GitHub Pages（任意・有効化すると使える）
 ```
 GET https://jx3t0shak1052-creator.github.io/infectionnews/api/surveillance.json
 ```
+
+> GitHub Pages を使う場合は、リポジトリの **Settings → Pages** で
+> Source を `Deploy from a branch` / Branch を `main` / フォルダを `/ (root)` にして Save してください。
+> 反映まで数十秒〜数分かかります。
 
 ## レスポンス（抜粋）
 
@@ -34,12 +51,12 @@ GET https://jx3t0shak1052-creator.github.io/infectionnews/api/surveillance.json
 ## 仕組み
 
 ```
-JIHS 週報CSV ──(毎週 cron)──> build_api.py ──> api/surveillance.json ──> GitHub Pages ──> アプリ
+JIHS 週報CSV ──(毎週 cron)──> build_api.py ──> api/surveillance.json ──> jsDelivr / Pages ──> アプリ
 ```
 
 - `.github/workflows/update-data.yml` が毎週火曜 06:00 UTC に実行。
 - `api/build_api.py` が JIHS の都道府県別週報 CSV を取得し、`api/surveillance.json` を生成。
-- 生成物を自動コミット → GitHub Pages が配信。
+- 生成物を自動コミット → jsDelivr / GitHub Pages が配信。
 
 ## ローカルでの再生成
 
