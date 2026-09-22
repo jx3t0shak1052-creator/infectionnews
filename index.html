@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>感染症週報ナビ - 中継API</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+      background: #F1F5F9; color: #0F172A; line-height: 1.7; padding: 32px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    .hero {
+      background: linear-gradient(135deg, #0D9488 0%, #22C55E 100%);
+      color: #fff; border-radius: 20px; padding: 28px 24px; margin-bottom: 20px;
+    }
+    .hero h1 { font-size: 22px; font-weight: 800; }
+    .hero p { font-size: 13px; opacity: .95; margin-top: 6px; }
+    .card {
+      background: #fff; border-radius: 16px; padding: 22px;
+      box-shadow: 0 6px 20px rgba(15,23,42,.06); margin-bottom: 16px;
+    }
+    h2 { font-size: 15px; font-weight: 800; margin-bottom: 12px; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12.5px;
+    }
+    pre {
+      background: #0F172A; color: #E2E8F0; border-radius: 12px;
+      padding: 16px; overflow-x: auto;
+    }
+    a.btn {
+      display: inline-block; background: #0D9488; color: #fff; text-decoration: none;
+      padding: 12px 18px; border-radius: 12px; font-weight: 800; font-size: 14px;
+    }
+    .muted { color: #64748B; font-size: 12.5px; }
+    ul { padding-left: 20px; } li { font-size: 13.5px; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>感染症週報ナビ 中継API</h1>
+      <p>国立健康危機管理研究機構(JIHS)の感染症発生動向調査 週報(速報値)を配信する中継APIです。</p>
+    </div>
+
+    <div class="card">
+      <h2>エンドポイント</h2>
+      <p class="muted">全データ(都道府県別 + 市区町村スポット)</p>
+      <pre>GET <a href="./api/surveillance.json">/api/surveillance.json</a></pre>
+      <p style="margin-top:12px"><a class="btn" href="./api/surveillance.json">APIを開く</a></p>
+    </div>
+
+    <div class="card">
+      <h2>レスポンス形式</h2>
+      <pre>{
+  "version": "20260922162331",
+  "generatedAt": "2026-09-22T16:23:31",
+  "period": "2026年第29〜37週",
+  "weekLabels": ["7/13", "7/20", ...],
+  "prefectures": {
+    "東京都": {
+      "influenza": [[97, 0.23], [138, 0.33], ...]
+    }
+  },
+  "spotlight": {
+    "静岡市": { "influenza": [[4, 0.22], ...] }
+  }
+}</pre>
+    </div>
+
+    <div class="card">
+      <h2>データの内容</h2>
+      <ul>
+        <li><b>prefectures</b>: 47都道府県 × 8疾患。各値は <code>[報告数, 定点当たり]</code>（古い週→新しい週）。</li>
+        <li><b>spotlight</b>: 静岡市・東京都中央区・京都市の市区町村別公式データ。</li>
+        <li><b>更新</b>: 毎週自動で最新週を取り込みます（未公開週は [0,0] 埋め）。</li>
+      </ul>
+      <p class="muted" style="margin-top:10px">
+        出典: 感染症発生動向調査 週報（速報値）/ 各自治体公表資料。速報値は後日修正される場合があります。
+      </p>
+    </div>
+  </div>
+</body>
+</html>
