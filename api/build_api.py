@@ -34,7 +34,7 @@ OUTPUT_JSON = os.path.join(API_DIR, 'surveillance.json')
 YEAR = 2026
 BASE_WEEK = 29                 # 週番号の起点
 BASE_DATE = date(2026, 7, 13)  # 第29週の週初め（月曜）
-MAX_WEEK = 40                  # これ以降は探索しない
+MAX_WEEK = 48                  # これ以降は探索しない（未公開週は404で自動スキップ）
 JIHS_URL = 'https://id-info.jihs.go.jp/surveillance/idwr/provisional/{y}/{w}/{y}-{w}-teiten.csv'
 
 # JIHSの列位置 -> アプリの疾患ID（0始まりの列インデックス）
@@ -136,9 +136,72 @@ def _align_spotlight(seed, all_weeks):
     return out
 
 
+def _collect_new_local_weeks(seed):
+    """各自治体の公式週報から、シードに未収録の新しい週を収集して取り込む。
+
+    東京都/静岡市/京都市は国のJIHS週報とは別に、それぞれ独自の週で
+    更新される。ここで各自治体の公式PDFから新しい週を取り込む。
+    失敗しても既存シードのまま処理を継続する（API生成を止めない）。
+    """
+    try:
+        import collect_local_reports as C
+    except Exception as e:  # pdfplumber 未導入など
+        print(f'[api] 自治体コレクタ利用不可: {e}')
+        return seed, []
+
+    # シードに収録済みの最大週
+    seeded = set()
+    for diseases in seed.values():
+        for series in diseases.values():
+            if isinstance(series, dict):
+                for k in series.keys():
+                    try:
+                        seeded.add(int(k))
+                    except ValueError:
+                        pass
+    max_seeded = max(seeded) if seeded else (BASE_WEEK - 1)
+
+    collected_weeks = []
+    for src in ('tokyo', 'shizuoka', 'kyoto'):
+        collect_fn, latest_fn = C.COLLECTORS[src]
+        try:
+            latest = latest_fn()
+        except Exception as e:
+            print(f'[api] {src}: 最新週の判定に失敗 {e}')
+            continue
+        if not latest or latest <= max_seeded:
+            continue
+        for w in range(max_seeded + 1, latest + 1):
+            try:
+                data = collect_fn(w)
+            except Exception as e:
+                print(f'[api] {src} week{w}: 取得失敗 {e}')
+                continue
+            for key, vals in data.items():
+                if key not in seed:
+                    continue
+                for did, val in zip(C.DISEASES, vals):
+                    seed[key].setdefault(did, {})
+                    if isinstance(seed[key][did], dict):
+                        seed[key][did][str(w)] = [round(val[0], 2), round(val[1], 2)]
+            collected_weeks.append(w)
+            print(f'[api] {src} week{w}: 取り込み完了')
+    return seed, sorted(set(collected_weeks))
+
+
 def refresh(output_path):
     prov, pref_weeks = build_provisional()
     seed = _load_spotlight_seed()
+
+    # 自治体（東京都/静岡市/京都市）の独自週報から新しい週を取り込む
+    seed, new_local = _collect_new_local_weeks(seed)
+    if new_local:
+        try:
+            with open(os.path.join(BASE_DIR, 'spotlight_seed.json'), 'w', encoding='utf-8') as f:
+                json.dump(seed, f, ensure_ascii=False, indent=1)
+            print(f'[api] spotlight_seed.json 更新 (追加週: {new_local})')
+        except Exception as e:
+            print(f'[api] seed保存失敗: {e}')
 
     # スポット側の週番号を収集
     spot_weeks = set()

@@ -4,8 +4,10 @@ name: Update surveillance data
 # GitHub Pages（main ブランチ）から配信される /api/surveillance.json が更新される。
 on:
   schedule:
-    # 毎週 火曜 06:00 UTC（= 日本時間 15:00）に実行
+    # 毎週 火曜・金曜 06:00 UTC（= 日本時間 15:00）に実行
+    # 自治体（東京都/静岡市/京都市）は国の週報とは別の日程で更新されるため
     - cron: '0 6 * * 2'
+    - cron: '0 6 * * 5'
   workflow_dispatch: {}   # 手動実行も可能
 
 permissions:
@@ -23,7 +25,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Build surveillance JSON from JIHS
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pdfplumber
+
+      - name: Build surveillance JSON (JIHS + 自治体独自週報)
         run: |
           cd api
           python build_api.py --refresh
@@ -42,7 +49,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add api/surveillance.json
+          git add api/surveillance.json api/spotlight_seed.json
           if git diff --staged --quiet; then
             echo "No changes."
           else
