@@ -6,6 +6,8 @@ on:
   schedule:
     # 毎週 火曜 06:00 UTC（= 日本時間 15:00）に実行
     - cron: '0 6 * * 2'
+    - cron: '0 6 * * 5'
+
   workflow_dispatch: {}   # 手動実行も可能
 
 permissions:
