@@ -18,6 +18,7 @@
 import os
 import json
 import re
+import sys
 import time
 import urllib.request
 from datetime import date, timedelta
@@ -136,6 +137,35 @@ def _align_spotlight(seed, all_weeks):
     return out
 
 
+def _ensure_pip_package(name):
+    """Python パッケージを必要時に自動インストールする（自己ブートストラップ）。
+
+    GitHub Actions のワークフロー側に `pip install` を追記できない環境でも、
+    自治体週報のPDF解析に必要な pdfplumber をここで用意できるようにする。
+    既に導入済みなら何もしない。失敗時は False を返し、呼び出し側で
+    安全にフォールバック（都道府県データのみ更新）させる。
+    """
+    import importlib
+    try:
+        importlib.import_module(name)
+        return True
+    except ImportError:
+        pass
+    import subprocess
+    try:
+        print(f'[api] {name} を自動インストールします…')
+        subprocess.run(
+            [sys.executable, '-m', 'pip', 'install', '--quiet',
+             '--disable-pip-version-check', name],
+            check=True, timeout=600,
+        )
+        importlib.import_module(name)
+        return True
+    except Exception as e:  # noqa
+        print(f'[api] {name} の自動インストールに失敗: {e}')
+        return False
+
+
 def _collect_new_local_weeks(seed):
     """各自治体の公式週報から、シードに未収録の新しい週を収集して取り込む。
 
@@ -143,9 +173,13 @@ def _collect_new_local_weeks(seed):
     更新される。ここで各自治体の公式PDFから新しい週を取り込む。
     失敗しても既存シードのまま処理を継続する（API生成を止めない）。
     """
+    # 自治体PDFの解析に必要な pdfplumber を用意（未導入なら自動で入れる）
+    if not _ensure_pip_package('pdfplumber'):
+        print('[api] pdfplumber が無いため自治体データの収集をスキップします')
+        return seed, []
     try:
         import collect_local_reports as C
-    except Exception as e:  # pdfplumber 未導入など
+    except Exception as e:  # 収集モジュールの読み込み失敗
         print(f'[api] 自治体コレクタ利用不可: {e}')
         return seed, []
 
